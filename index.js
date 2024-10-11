@@ -42,6 +42,7 @@ function kebabCase(str) {
         await page.goto(url);
 
         // Take a screenshot
+        await page.waitForLoadState('load'); 
         await page.screenshot({ path: `screenshots/${kebabCase(title)}.png`, fullPage: true });
         console.log(`Screenshot taken for ${title}`);
       } catch (error) {
