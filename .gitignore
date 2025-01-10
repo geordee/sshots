@@ -1,3 +1,5 @@
 node_modules/
 urls.csv
-screenshots/*.png
+urls.*.csv
+!urls.example.csv
+screenshots/**/*.png

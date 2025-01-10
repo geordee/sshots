@@ -1,6 +1,7 @@
 import fs from 'fs';
-import { chromium } from 'playwright';
+import { chromium, devices } from 'playwright';
 import { parse } from 'csv-parse';
+import { readFile } from 'fs/promises';
 
 function kebabCase(str) {
   return str
@@ -12,10 +13,14 @@ function kebabCase(str) {
 }
 
 (async () => {
+  // Get Devices
+  const user_devices = JSON.parse(
+    await readFile(new URL('./devices.json', import.meta.url))
+  );
+  const deviceDescriptors = Object.entries(devices).map(([name, device]) => (name));
+
   // Launch the browser
   const browser = await chromium.launch();
-  const context = await browser.newContext();
-  const page = await context.newPage();
 
   // Read the CSV file
   const data = fs.readFileSync('urls.csv', 'utf8');
@@ -32,21 +37,33 @@ function kebabCase(str) {
       return;
     }
 
-    // Loop through each record in the CSV
-    for (const record of records) {
-      const { title, url } = record;
+    for (const device of user_devices) {
+      if (!deviceDescriptors.includes(device)) {
+        console.error(`Device ${device} is not supported`);
+        continue;
+      }
+      console.log(`# Using device ${device}`);
+  
+      // Loop through each record in the CSV
+      for (const record of records) {
+        const context = await browser.newContext({
+          ...devices[device],
+        });
+        const page = await context.newPage();
 
-      console.log(`Processing ${title} at ${url}`);
-      try {
-        // Navigate to the URL
-        await page.goto(url);
+        const { title, url } = record;
 
-        // Take a screenshot
-        await page.waitForLoadState('load'); 
-        await page.screenshot({ path: `screenshots/${kebabCase(title)}.png`, fullPage: true });
-        console.log(`Screenshot taken for ${title}`);
-      } catch (error) {
-        console.error(`Error capturing screenshot for ${title}: ${error}`);
+        console.log(`  - Processing ${title} at ${url}`);
+        try {
+          // Navigate to the URL
+          await page.goto(url);
+
+          // Take a screenshot
+          await page.waitForLoadState('load'); 
+          await page.screenshot({ path: `screenshots/${device}/${kebabCase(title)}.png`, fullPage: true });
+        } catch (error) {
+          console.error(`Error capturing screenshot for ${title}: ${error}`);
+        }
       }
     }
 
